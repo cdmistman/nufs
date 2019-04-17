@@ -1,5 +1,4 @@
 #include "defs.h"
-#include "types.h"
 #include "util.h"
 
 int
@@ -147,7 +146,10 @@ nufs_read(const char* path, char* buf, size_t size, off_t offset, struct fuse_fi
 int
 nufs_readdir(const char* path, void* buf, fuse_fill_dir_t filler, off_t offset, struct fuse_file_info* f_info)
 {
-	//todo -- idk what to do
+	int node_id = get_node_id(path);
+	if (node_id < 0) return node_id;
+
+	//todo
 }
 
 int

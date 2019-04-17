@@ -15,6 +15,10 @@
 #define FUSE_USE_VERSION 26
 #include <fuse.h>
 
+typedef unsigned short index_t;
+
+#define PAGE_SIZE 4096
+
 #define FALSE 0
 #define TRUE 1
 
@@ -26,24 +30,27 @@
 #define T_ANY T_DIR | T_FILE | T_LINK
 
 // dir.c
-int dir_add_entry(int dir_id, int node_id, const char* name);
-int dir_rm_entry(int dir_id, int node_id);
-int dir_has_entry(int dir_id, const char* name);
-int dir_rm_entries(int dir_id);
+int dir_add_entry(index_t dir_id, index_t node_id, const char* name);
+int dir_rm_entry(index_t dir_id, index_t node_id);
+int dir_has_entry(index_t dir_id, const char* name);
+int dir_rm_entries(index_t dir_id);
+int dir_read(index_t dir_id, void* buf, fuse_fill_dir_t filler);
 
 // fs.c
-int get_node_id(const char* path);
-int get_parent_node_id(const char* path, char** child_ptr);
-int get_empty_node();
-int dealloc_node(int node_id);
+index_t get_node_id(const char* path);
+index_t get_parent_node_id(const char* path, char** child_ptr);
+index_t get_empty_node();
+int dealloc_node(index_t node_id);
+index_t node_alloc(const char* path, mode_t mode);
 
 // node.c
-int node_has_mode(int node_id, int mask);
-int node_set_mode(int node_id, mode_t mode);
-int node_get_mode(int node_id);
-size_t node_get_size(int node_id);
+int node_has_mode(index_t node_id, int mask);
+int node_set_mode(index_t node_id, mode_t mode);
+int node_get_mode(index_t node_id);
+size_t node_get_size(index_t node_id);
 int node_get_parent_node_id(int node_id);
 int node_truncate(int node_id, off_t size);
+char* node_get_data(int node_id, off_t data_index);
 
 // nufs.c
 int nufs_access(const char* path, int mask);
