@@ -18,8 +18,11 @@ nufs_chmod(const char* path, mode_t mode)
 	int node_id = get_node_id(path);
 	if (node_id < 0) return node_id;
 
+	// get the new mode while keeping the file type (file, dir, or link)
 	mode_t new_mode = node_get_mode(node_id) & T_ANY;
 	new_mode = new_mode | mode;
+	
+	// return the successfulness of setting the new mode to the node
 	return node_set_mode(node_id, new_mode);
 }
 
@@ -28,9 +31,13 @@ nufs_getattr(const char* path, struct stat* st)
 {
 	int node_id = get_node_id(path);
 	if (node_id < 0) return node_id;
+
+	//fill the stats object with the stats needed
 	st->st_mode = node_get_mode(node_id);
 	st->st_size = node_get_size(node_id);
 	st->st_uid = getuid();
+
+	// return success since everything has been filled
 	return SUCCESS;
 }
 
@@ -43,15 +50,34 @@ nufs_link(const char* from, const char* to)
 int
 nufs_mkdir(const char* path, mode_t mode)
 {
+	return node_alloc(path, T_DIR | mode);
+
+	// todo move this to node_alloc
+
 	int node_id = get_empty_node();
 	if (node_id < 0) return node_id;
+
+	// if the mode can't be set for the new node, return try again
 	if (node_set_mode(node_id, T_DIR | mode) != SUCCESS) goto TRYAGAIN;
+
+	// the pointer to the name of the child
 	char* child_name;
+	// the id of the node that's the parent of the new node. the 
+	// function also assigns the child name ptr to the name of the new
+	// child
 	int parent_id = get_parent_node_id(path, &child_name);
-	if (parent_id == -1 || node_has_mode(parent_id, T_DIR) == FALSE) 
+	// if the parent doesn't exist, or if the parent isn't a dir, then
+	// there's a failure
+	if (parent_id == -1 || node_has_mode(parent_id, T_DIR) == FALSE) {
+		free(child_name);
 		goto TRYAGAIN;
+	}
+	// if there's already an entry in the dir with the same name,
+	// then return the appropriate error
 	if (dir_has_entry(parent_id, child_name) == TRUE) return -EEXIST;
+	// add the new node to the dir
 	int rv = dir_add_entry(parent_id, node_id, (const char*)child_name);
+	// return the return value of adding the new entry to the directory
 	if (rv != SUCCESS) dealloc_node(node_id);
 	free(child_name);
 	return rv;
@@ -64,10 +90,7 @@ TRYAGAIN:
 int 
 nufs_mknod(const char* path, mode_t mode, dev_t rdev)
 {
-	int node_id = get_empty_node();
-	if (node_id < 0) return node_id;
-	//todo -- too lazy
-	return node_set_mode(node_id, T_FILE | mode);
+	return node_alloc(path, T_FILE | mode);
 }
 
 int
@@ -82,13 +105,50 @@ int
 nufs_read(const char* path, char* buf, size_t size, off_t offset, struct fuse_file_info* f_info)
 {
 	int node_id = get_node_id(path);
-	//todo -- too lazy
+	if (node_id < 0) return node_id;
+	
+	// get the available read size
+	size_t avail_read_size = node_get_size(node_id) - offset;
+	size_t res = max(avail_read_size - size, 0);
+
+	// get the total read size
+	size_t read_size = min(avail_read_size, size);
+	if (read_size == 0) return 0;
+
+	// index of the node's page to read from
+	int page_index = offset / PAGE_SIZE;
+
+	// the data
+	char* data = node_get_data(node_id, page_index);
+
+	// index of the current byte in data
+	off_t data_index = offset % PAGE_SIZE;
+
+	// buffer index
+	off_t buf_index = 0;
+
+	while (buf_index < read_size) {
+		// if we've read all the data from the current page, get the
+		// next page of data
+		if (data_index % PAGE_SIZE == 0) {
+			data_index = 0;
+			++page_index;
+			data = node_get_data(node_id, page_index);
+		}
+
+		buf[buf_index] = data[data_index];
+		++buf_index;
+		++data_index;
+	}
+
+	// return bytes left to read in the file
+	return res;
 }
 
 int
 nufs_readdir(const char* path, void* buf, fuse_fill_dir_t filler, off_t offset, struct fuse_file_info* f_info)
 {
-	//todo -- too lazy
+	//todo -- idk what to do
 }
 
 int
