@@ -109,7 +109,6 @@ nufs_read(const char* path, char* buf, size_t size, off_t offset, struct fuse_fi
 	
 	// get the available read size
 	size_t avail_read_size = node_get_size(node_id) - offset;
-	size_t res = max(avail_read_size - size, 0);
 
 	// get the total read size
 	size_t read_size = min(avail_read_size, size);
@@ -130,7 +129,7 @@ nufs_read(const char* path, char* buf, size_t size, off_t offset, struct fuse_fi
 	while (buf_index < read_size) {
 		// if we've read all the data from the current page, get the
 		// next page of data
-		if (data_index % PAGE_SIZE == 0) {
+		if (data_index % PAGE_SIZE == 0 && data_index != 0) {
 			data_index = 0;
 			++page_index;
 			data = node_get_data(node_id, page_index);
@@ -142,7 +141,7 @@ nufs_read(const char* path, char* buf, size_t size, off_t offset, struct fuse_fi
 	}
 
 	// return bytes left to read in the file
-	return res;
+	return read_size;
 }
 
 int
@@ -206,8 +205,41 @@ nufs_write(const char* path, const char* buf, size_t size, off_t offset, struct 
 {
 	int node_id = get_node_id(path);
 	if (node_id < 0) return node_id;
-	//todo -- too lazy
-	return SUCCESS;
+	
+	// get the available write size
+	size_t avail_write_size = node_get_size(node_id) - offset;
+
+	// get total write size
+	size_t write_size = min(avail_write_size, size);
+	if (write_size == 0) return 0;
+
+	// index of the node's page to write to
+	int page_index = offset / PAGE_SIZE;
+
+	// the data
+	char* data = node_get_data(node_id, page_index);
+
+	// index of the current byte in data
+	off_t data_index = offset % PAGE_SIZE;
+
+	// buffer index
+	off_t buf_index = 0;
+
+	while (buf_index < write_size) {
+		// if we've written all the data allowed on the current page, get
+		// the next page of data
+		if (data_index % PAGE_SIZE == 0 && data_index != 0) {
+			data_index = 0;
+			++page_index;
+			data = node_get_data(node_id, page_index);
+		}
+
+		data[data_index] = buf[buf_index];
+		++buf_index;
+		++data_index;
+	}
+
+	return write_size;
 }
 
 void
