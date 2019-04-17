@@ -1,0 +1,66 @@
+#ifndef NUFS_DEFS_H
+#define NUFS_DEFS_H
+
+#include <alloca.h>
+#include <assert.h>
+#include <dirent.h>
+#include <errno.h>
+#include <string.h>
+#include <stdlib.h>
+#include <unistd.h>
+
+#include <sys/stat.h>
+#include <sys/types.h>
+
+#define FUSE_USE_VERSION 26
+#include <fuse.h>
+
+#define FALSE 0
+#define TRUE 1
+
+#define SUCCESS 0
+
+#define T_DIR 040000
+#define T_FILE 0100000
+#define T_LINK 120000
+#define T_ANY T_DIR | T_FILE | T_LINK
+
+// dir.c
+int dir_add_entry(int dir_id, int node_id, const char* name);
+int dir_rm_entry(int dir_id, int node_id);
+int dir_has_entry(int dir_id, const char* name);
+int dir_rm_entries(int dir_id);
+
+// fs.c
+int get_node_id(const char* path);
+int get_parent_node_id(const char* path, char** child_ptr);
+int get_empty_node();
+int dealloc_node(int node_id);
+
+// node.c
+int node_has_mode(int node_id, int mask);
+int node_set_mode(int node_id, mode_t mode);
+int node_get_mode(int node_id);
+size_t node_get_size(int node_id);
+int node_get_parent_node_id(int node_id);
+int node_truncate(int node_id, off_t size);
+
+// nufs.c
+int nufs_access(const char* path, int mask);
+int nufs_chmod(const char* path, mode_t mode);
+int nufs_getattr(const char* path, struct stat* st);
+int nufs_link(const char* from, const char* to);
+int nufs_mkdir(const char* path, mode_t mode);
+int nufs_mknod(const char* path, mode_t mode, dev_t rdev);
+int nufs_open(const char* path, struct fuse_file_info* f_info);
+int nufs_read(const char* path, char* buf, size_t size, off_t offset, struct fuse_file_info* f_info);
+int nufs_readdir(const char* path, void* buf, fuse_fill_dir_t filler, off_t offset, struct fuse_file_info* f_info);
+int nufs_rename(const char* from, const char* to);
+int nufs_rmdir(const char* path);
+int nufs_truncate(const char* path, off_t size);
+int nufs_unlink(const char* path);
+int nufs_utimes(const char* path, const struct timespec ts[2]);
+int nufs_write(const char* path, const char* buf, size_t size, off_t offset, struct fuse_file_info* f_info);
+void nufs_init_ops(struct fuse_operations* ops);
+
+#endif
