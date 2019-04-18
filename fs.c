@@ -1,0 +1,5 @@
+void
+fs_init()
+{
+	
+}

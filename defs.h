@@ -29,6 +29,8 @@ typedef unsigned short index_t;
 #define T_LINK 120000
 #define T_ANY T_DIR | T_FILE | T_LINK
 
+#define MAX_FILE_NAME 62
+
 // dir.c
 int dir_add_entry(index_t dir_id, index_t node_id, const char* name);
 int dir_rm_entry(index_t dir_id, index_t node_id);
@@ -37,11 +39,12 @@ int dir_rm_entries(index_t dir_id);
 int dir_read(index_t dir_id, void* buf, fuse_fill_dir_t filler);
 
 // fs.c
-index_t get_node_id(const char* path);
-index_t get_parent_node_id(const char* path, char** child_ptr);
-index_t get_empty_node();
+void fs_init();
+int get_node_id(const char* path);
+int get_parent_node_id(const char* path, char** child_ptr);
+int get_empty_node();
 int dealloc_node(index_t node_id);
-index_t node_alloc(const char* path, mode_t mode);
+int node_alloc(const char* path, mode_t mode);
 
 // node.c
 int node_has_mode(index_t node_id, int mask);
